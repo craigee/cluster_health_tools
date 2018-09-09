@@ -33,15 +33,17 @@
       <title>Aggregate performance of the cluster + the stdev. We want the stdev to be very low</title>
       <chart>
         <search>
-          <query>(index=_internal OR index=core_splunk_internal )[ | rest /services/server/introspection/indexer 
-| sort - splunk_server 
-| fields + splunk_server
-| eval search="host=\"".splunk_server."\"" 
-| stats values(search) as search 
-| eval search="(".mvjoin(search, " OR ").")" 
-| fields + search ] TERM(group=thruput) TERM(name=thruput) 
-| bin span=15sec _time
-| stats sum(instantaneous_kbps) as instantaneous_kbps  by host _time
+          <query>index=_internal
+    [| eventcount index=* summarize=false 
+    | stats count by server 
+    | sort - server 
+    | fields + server 
+    | eval search="host=\"".server."\"" 
+    | stats values(search) as search 
+    | eval search="(".mvjoin(search, " OR ").")" 
+    | fields + search] TERM(group=thruput) TERM(name=thruput) 
+| bin span=15sec _time 
+| stats sum(instantaneous_kbps) as instantaneous_kbps by host _time 
 | timechart stdev(instantaneous_kbps) avg(instantaneous_kbps) span=1mins</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
@@ -71,6 +73,7 @@
         <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
         <option name="charting.legend.placement">right</option>
         <option name="height">812</option>
+        <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
   </row>
@@ -97,15 +100,18 @@
       </input>
       <chart>
         <search>
-          <query>(index=_internal OR index=core_splunk_internal )[ | rest /services/server/introspection/indexer 
-| sort - splunk_server 
-| fields + splunk_server
-| eval search="host=\"".splunk_server."\"" 
-| stats values(search) as search 
-| eval search="(".mvjoin(search, " OR ").")" 
-| fields + search ] TERM(name=$queue$)   TERM(blocked=true) sourcetype=splunkd
-| timechart span=1min limit=0 count by host
-| foreach * [| eval &lt;&lt;FIELD&gt;&gt;=if('&lt;&lt;FIELD&gt;&gt;'=0,0,1)]</query>
+          <query>index=_internal 
+    [| eventcount index=* summarize=false 
+    | stats count by server 
+    | sort - server 
+    | fields + server 
+    | eval search="host=\"".server."\"" 
+    | stats values(search) as search 
+    | eval search="(".mvjoin(search, " OR ").")" 
+    | fields + search] TERM(name=$queue$) TERM(blocked=true) sourcetype=splunkd 
+| timechart span=1min limit=0 count by host 
+| foreach * 
+    [| eval &lt;&lt;FIELD&gt;&gt;=if('&lt;&lt;FIELD&gt;&gt;'=0,0,1)]</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
           <sampleRatio>1</sampleRatio>
@@ -134,6 +140,7 @@
         <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
         <option name="charting.legend.placement">right</option>
         <option name="height">446</option>
+        <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
   </row>
@@ -142,14 +149,15 @@
       <chart>
         <title>Indexing delay of the indexers internal logs, should be about 2-5 seconds when healthy</title>
         <search>
-          <query>(index=_internal OR index=core_splunk_internal) 
-    [| rest /services/server/introspection/indexer 
-    | sort - splunk_server 
-    | fields + splunk_server 
-    | eval search="host=\"".splunk_server."\"" 
+          <query>index=_internal 
+    [| eventcount index=* summarize=false 
+    | stats count by server 
+    | sort - server 
+    | fields + server 
+    | eval search="host=\"".server."\"" 
     | stats values(search) as search 
     | eval search="(".mvjoin(search, " OR ").")" 
-    | fields + search ]
+    | fields + search]
     sourcetype=splunkd source="*metrics.log" 
 | eval indexing_delay=_indextime-_time 
 | eval _time=_indextime 
@@ -159,6 +167,7 @@
         </search>
         <option name="charting.chart">line</option>
         <option name="height">543</option>
+        <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
   </row>
@@ -167,16 +176,19 @@
       <title>Number of connections coming into the indexers, this needs to be high for good statistical randomness</title>
       <chart>
         <search>
-          <query>(index=_internal OR index=core_splunk_internal) [ | rest /services/server/introspection/indexer 
-| sort - splunk_server 
-| fields + splunk_server
-| eval search="host=\"".splunk_server."\"" 
-| stats values(search) as search 
-| eval search="(".mvjoin(search, " OR ").")" 
-| fields + search ]  TERM(eventtype=connect_done)
-| timechart limit=0 span=30s count by host
-| eval sum=0
-| foreach * [| eval sum=if(isnull('&lt;&lt;FIELD&gt;&gt;'),sum,sum+'&lt;&lt;FIELD&gt;&gt;')]</query>
+          <query>index=_internal 
+    [| eventcount index=* summarize=false 
+    | stats count by server 
+    | sort - server 
+    | fields + server 
+    | eval search="host=\"".server."\"" 
+    | stats values(search) as search 
+    | eval search="(".mvjoin(search, " OR ").")" 
+    | fields + search] TERM(eventtype=connect_done) 
+| timechart limit=0 span=30s count by host 
+| eval sum=0 
+| foreach * 
+    [| eval sum=if(isnull('&lt;&lt;FIELD&gt;&gt;'),sum,sum+'&lt;&lt;FIELD&gt;&gt;')]</query>
           <earliest>$time.earliest$</earliest>
           <latest>$time.latest$</latest>
         </search>
@@ -185,6 +197,7 @@
         <option name="charting.chart.overlayFields">sum</option>
         <option name="charting.chart.stackMode">stacked</option>
         <option name="height">439</option>
+        <option name="refresh.display">progressbar</option>
       </chart>
     </panel>
   </row>
